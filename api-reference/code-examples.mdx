@@ -1,0 +1,443 @@
+---
+title: 'Code Examples'
+description: 'Complete code examples for integrating with Agent Phone API'
+---
+
+## Code Examples
+
+Complete code examples for integrating with the Agent Phone API.
+
+## JavaScript / Node.js
+
+<CodeGroup>
+```javascript sms-api.js
+const API_KEY = 'YOUR_API_KEY';
+const BASE_URL = 'https://api.agentphone.dev';
+
+const headers = {
+  'Authorization': `Bearer ${API_KEY}`,
+  'Content-Type': 'application/json',
+};
+
+// Create a phone number
+async function createNumber() {
+  const res = await fetch(`${BASE_URL}/v1/numbers`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ country: 'US' }),
+  });
+  return res.json();
+}
+
+// List all conversations
+async function listConversations() {
+  const res = await fetch(`${BASE_URL}/v1/conversations`, { headers });
+  return res.json();
+}
+
+// Get a conversation with messages
+async function getConversation(conversationId) {
+  const res = await fetch(
+    `${BASE_URL}/v1/conversations/${conversationId}`,
+    { headers }
+  );
+  return res.json();
+}
+
+// List all calls
+async function listCalls() {
+  const res = await fetch(`${BASE_URL}/v1/calls`, { headers });
+  return res.json();
+}
+
+// Get a specific call with transcripts
+async function getCall(callId) {
+  const res = await fetch(`${BASE_URL}/v1/calls/${callId}`, { headers });
+  return res.json();
+}
+
+// List calls for a specific number
+async function listCallsForNumber(numberId) {
+  const res = await fetch(`${BASE_URL}/v1/numbers/${numberId}/calls`, { headers });
+  return res.json();
+}
+
+// Register a webhook
+async function registerWebhook(url) {
+  const res = await fetch(`${BASE_URL}/v1/webhooks`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ url }),
+  });
+  return res.json();
+}
+
+// Delete a phone number
+async function deleteNumber(numberId) {
+  const res = await fetch(`${BASE_URL}/v1/numbers/${numberId}`, {
+    method: 'DELETE',
+    headers,
+  });
+  return res.json();
+}
+
+// Usage
+const number = await createNumber();
+console.log(`Created: ${number.phoneNumber}`);
+
+// Register webhook for real-time messages and voice
+const webhook = await registerWebhook('https://my-server.com/webhook');
+console.log(`Webhook secret: ${webhook.secret}`);
+
+// Later, check conversations
+const convos = await listConversations();
+console.log(`${convos.total} conversations`);
+
+// Check voice calls
+const calls = await listCalls();
+console.log(`${calls.total} calls`);
+
+// Get calls for a specific number
+const numberCalls = await listCallsForNumber(number.id);
+console.log(`${numberCalls.total} calls for this number`);
+
+// Get a specific call with transcripts
+if (calls.data.length > 0) {
+  const call = await getCall(calls.data[0].id);
+  console.log(`Call transcripts: ${call.transcripts.length}`);
+}
+
+// Delete a number when done (optional)
+// await deleteNumber(number.id);
+// console.log('Number released');
+```
+</CodeGroup>
+
+## Express.js Webhook Handler
+
+<CodeGroup>
+```javascript webhook.js
+const express = require('express');
+const crypto = require('crypto');
+const app = express();
+
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
+
+// Middleware to capture raw body for signature verification
+app.use('/webhook', express.raw({ type: 'application/json' }));
+
+function verifyWebhook(payload, signature, secret) {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  return signature === `sha256=${expected}`;
+}
+
+app.post('/webhook', (req, res) => {
+  const signature = req.headers['x-webhook-signature'];
+  const webhookId = req.headers['x-webhook-id'];
+  
+  // Verify signature
+  if (!verifyWebhook(req.body, signature, WEBHOOK_SECRET)) {
+    return res.status(401).send('Invalid signature');
+  }
+  
+  // Parse payload
+  const payload = JSON.parse(req.body.toString());
+  
+  // Handle agent.message event
+  if (payload.event === 'agent.message') {
+    const { channel, agentId, data } = payload;
+    
+    if (channel === 'sms') {
+      console.log(`SMS from ${data.from}: ${data.message}`);
+      // Process SMS asynchronously
+      processMessage(data).catch(console.error);
+      // Return 200 OK (no response needed for SMS)
+      return res.status(200).send('OK');
+    }
+    
+    if (channel === 'voice') {
+      console.log(`Voice call from ${data.from}: ${data.transcript}`);
+      // Process voice and return response
+      processVoice(data)
+        .then(response => {
+          // Return text to speak to caller
+          res.status(200).json({ text: response, voice: 'Polly.Amy', hangup: false });
+        })
+        .catch(err => {
+          console.error('Voice processing error:', err);
+          res.status(200).json({ text: 'Sorry, I encountered an error.' });
+        });
+      return; // Exit early since we already sent response
+    }
+  }
+  
+  // Always return 200 OK quickly
+  res.status(200).send('OK');
+});
+
+async function processMessage(message) {
+  // Your message processing logic here
+  // e.g., send to AI agent, store in database, etc.
+}
+
+app.listen(3000, () => {
+  console.log('Webhook server running on port 3000');
+});
+```
+</CodeGroup>
+
+## Flask Webhook Handler
+
+<CodeGroup>
+```python webhook.py
+from flask import Flask, request, jsonify
+import hmac
+import hashlib
+import os
+
+app = Flask(__name__)
+WEBHOOK_SECRET = os.environ.get('WEBHOOK_SECRET')
+
+def verify_webhook(payload_body, signature, secret):
+    expected = hmac.new(
+        secret.encode(),
+        payload_body,
+        hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(f"sha256={expected}", signature)
+
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    signature = request.headers.get('X-Webhook-Signature')
+    webhook_id = request.headers.get('X-Webhook-ID')
+    
+    # Verify signature
+    if not verify_webhook(request.data, signature, WEBHOOK_SECRET):
+        return jsonify({'error': 'Invalid signature'}), 401
+    
+    # Parse payload
+    payload = request.json
+    
+    # Handle agent.message event
+    if payload.get('event') == 'agent.message':
+        channel = payload.get('channel')
+        agent_id = payload.get('agentId')
+        data = payload.get('data', {})
+        
+        if channel == 'sms':
+            print(f"SMS from {data['from']}: {data['message']}")
+            # Process message asynchronously (use background task)
+            process_message.delay(data)
+            return jsonify({'status': 'ok'}), 200
+        
+        if channel == 'voice':
+            transcript = data.get('transcript', '')
+            print(f"Voice call from {data['from']}: {transcript}")
+            
+            # Get AI response (e.g., from OpenAI)
+            ai_response = get_ai_response(transcript)
+            
+            # Return text to speak to caller
+            return jsonify({'text': ai_response, 'voice': 'Polly.Amy', 'hangup': False}), 200
+    
+    # Always return 200 OK quickly
+    return jsonify({'status': 'ok'}), 200
+
+def process_message(message):
+    # Your message processing logic here
+    pass
+
+def get_ai_response(transcript):
+    # Example: Call OpenAI API
+    # import openai
+    # response = openai.ChatCompletion.create(
+    #     model="gpt-4",
+    #     messages=[{"role": "user", "content": transcript}]
+    # )
+    # return response.choices[0].message.content
+    return f"I heard you say: {transcript}. How can I help?"
+
+if __name__ == '__main__':
+    app.run(port=3000)
+```
+</CodeGroup>
+
+## Voice Webhook Handler with AI
+
+<CodeGroup>
+```python voice_webhook.py
+from flask import Flask, request, jsonify
+import openai
+import os
+
+app = Flask(__name__)
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+openai.api_key = OPENAI_API_KEY
+
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    payload = request.json
+    
+    # Handle agent.message event
+    if payload.get('event') == 'agent.message':
+        channel = payload.get('channel')
+        agent_id = payload.get('agentId')
+        data = payload.get('data', {})
+        
+        if channel == 'voice':
+            transcript = data.get('transcript', '')
+            
+            # Get AI response from OpenAI
+            try:
+                response = openai.ChatCompletion.create(
+                    model="gpt-4",
+                    messages=[
+                        {"role": "system", "content": "You are a helpful customer service assistant."},
+                        {"role": "user", "content": transcript}
+                    ],
+                    max_tokens=150
+                )
+                ai_text = response.choices[0].message.content
+                
+                # Return text to speak
+                return jsonify({
+                    'text': ai_text,
+                    'voice': 'Polly.Amy',
+                    'hangup': False
+                }), 200
+            except Exception as e:
+                print(f"AI error: {e}")
+                return jsonify({'text': 'Sorry, I encountered an error.'}), 200
+        
+        if channel == 'sms':
+            # Process SMS (no response needed)
+            print(f"SMS from {data['from']}: {data['message']}")
+            return jsonify({'status': 'ok'}), 200
+    
+    # Handle other events or return OK
+    return jsonify({'status': 'ok'}), 200
+
+if __name__ == '__main__':
+    app.run(port=3000)
+```
+</CodeGroup>
+
+## Next.js API Route
+
+<CodeGroup>
+```javascript pages/api/webhook.js
+import crypto from 'crypto';
+
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
+
+function verifyWebhook(payload, signature, secret) {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  return signature === `sha256=${expected}`;
+}
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+  
+  const signature = req.headers['x-webhook-signature'];
+  const webhookId = req.headers['x-webhook-id'];
+  
+  // Get raw body for signature verification
+  const rawBody = JSON.stringify(req.body);
+  
+  // Verify signature
+  if (!verifyWebhook(rawBody, signature, WEBHOOK_SECRET)) {
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+  
+  const payload = req.body;
+  
+  // Handle agent.message event
+  if (payload.event === 'agent.message') {
+    const { channel, agentId, data } = payload;
+    
+    if (channel === 'sms') {
+      // Process SMS (use a queue or background job in production)
+      await processMessage(data);
+    }
+    
+    if (channel === 'voice') {
+      // Process voice and return response
+      const response = await processVoice(data);
+      return res.status(200).json({ text: response, voice: 'Polly.Amy', hangup: false });
+    }
+  }
+  
+  // Always return 200 OK quickly
+  res.status(200).json({ status: 'ok' });
+}
+
+async function processMessage(message) {
+  // Your message processing logic
+  console.log(`Processing message: ${message.body}`);
+}
+```
+</CodeGroup>
+
+## Python API Client
+
+<CodeGroup>
+```python sms_api.py
+import requests
+import hmac
+import hashlib
+
+API_KEY = 'YOUR_API_KEY'
+BASE_URL = 'https://api.agentphone.dev'
+HEADERS = {'Authorization': f'Bearer {API_KEY}'}
+
+# Create a phone number
+response = requests.post(
+    f'{BASE_URL}/v1/numbers',
+    headers=HEADERS,
+    json={'country': 'US'}
+)
+number = response.json()
+print(f"Created: {number['phoneNumber']}")
+
+# Register webhook
+response = requests.post(
+    f'{BASE_URL}/v1/webhooks',
+    headers=HEADERS,
+    json={'url': 'https://my-server.com/sms'}
+)
+webhook = response.json()
+WEBHOOK_SECRET = webhook['secret']
+
+# List conversations
+response = requests.get(f'{BASE_URL}/v1/conversations', headers=HEADERS)
+convos = response.json()
+print(f"{convos['total']} conversations")
+
+# Get specific conversation
+if convos['data']:
+    conv_id = convos['data'][0]['id']
+    response = requests.get(
+        f'{BASE_URL}/v1/conversations/{conv_id}',
+        headers=HEADERS
+    )
+    conv = response.json()
+    print(f"Conversation with {conv['participant']}: {conv['messageCount']} messages")
+
+# Delete a phone number (optional)
+# response = requests.delete(
+#     f'{BASE_URL}/v1/numbers/{number["id"]}',
+#     headers=HEADERS
+# )
+# result = response.json()
+# print(f"Number released: {result['message']}")
+```
+</CodeGroup>
+

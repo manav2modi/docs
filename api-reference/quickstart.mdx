@@ -1,0 +1,126 @@
+---
+title: 'Quick Start'
+description: 'Get up and running with Agent Phone API in under 2 minutes'
+---
+
+## Quick Start
+
+Get up and running with the agent-first approach in under 2 minutes:
+
+### Step 1: Get your API key
+
+<Card title="Create a project" icon="plus" href="/setup">
+  Create a project to get your API key, or use the one you already have.
+</Card>
+
+### Step 2: Create an agent
+
+Create an AI agent that will handle your phone interactions:
+
+```bash
+curl -X POST https://api.agentphone.dev/v1/agents \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Support Bot", "description": "Handles customer support"}'
+```
+
+<CodeGroup>
+```json Response
+{
+  "id": "agent_123",
+  "name": "Support Bot",
+  "description": "Handles customer support",
+  "createdAt": "2025-12-03T10:00:00Z",
+  "numbers": []
+}
+```
+</CodeGroup>
+
+### Step 3: Give it a phone number
+
+Provision a phone number for your agent:
+
+```bash
+curl -X POST https://api.agentphone.dev/v1/numbers \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"country": "US", "agentId": "agent_123"}'
+```
+
+<CodeGroup>
+```json Response
+{
+  "id": "clx123abc",
+  "phoneNumber": "+18571234567",
+  "country": "US",
+  "status": "active",
+  "agentId": "agent_123",
+  "createdAt": "2025-12-03T10:00:00Z"
+}
+```
+</CodeGroup>
+
+### Step 4: Connect your agent brain
+
+Register a webhook to receive messages and voice transcripts:
+
+```bash
+curl -X POST https://api.agentphone.dev/v1/webhooks \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://your-server.com/webhook"}'
+```
+
+<CodeGroup>
+```json Response
+{
+  "id": "wh_abc123",
+  "url": "https://your-server.com/webhook",
+  "secret": "whsec_xyz...",
+  "status": "active",
+  "contextLimit": 10,
+  "createdAt": "2025-12-03T10:00:00Z"
+}
+```
+</CodeGroup>
+
+### Step 5: Handle agent.message events with context
+
+When someone texts or calls your number, you'll receive an `agent.message` event with full conversation context:
+
+<CodeGroup>
+```json Incoming webhook payload
+{
+  "event": "agent.message",
+  "channel": "sms",  // or "voice"
+  "agentId": "agent_123",
+  "data": {
+    "conversationId": "conv_abc",
+    "from": "+14155551234",
+    "to": "+18571234567",
+    "message": "Hey, I need help!",
+    "direction": "inbound"
+  },
+  "conversationState": { "customerName": "John" },  // Your stored metadata
+  "recentHistory": [  // Last 10 messages for AI context
+    { "content": "Previous message", "direction": "inbound", "channel": "sms", "at": "..." }
+  ]
+}
+```
+</CodeGroup>
+
+<Note>
+  For voice calls, your webhook must return JSON with a `text` field that will be spoken to the caller. See the [Webhooks](/api-reference/webhooks) section for details.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Agents" icon="robot" href="/api-reference/agents">
+    Learn about managing agents
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/api-reference/webhooks">
+    Set up webhook handlers
+  </Card>
+</CardGroup>
+

@@ -1,33 +1,39 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: 'Overview'
+description: 'Agent Phone API - Provision phone numbers, receive SMS messages, and handle voice calls with AI agents'
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+## Overview
 
-## Welcome
+Agent Phone lets you programmatically get phone numbers, receive SMS messages, and handle voice calls. We handle all the complexity of phone number provisioning, message delivery, and voice transcription, so you can focus on building your AI agent application.
 
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
+<CardGroup cols={3}>
+  <Card title="Get Numbers" icon="phone">
+    Provision SMS and Voice-enabled phone numbers instantly
+  </Card>
+  <Card title="Receive SMS" icon="message">
+    Messages are stored and available via API
+  </Card>
+  <Card title="Voice Calls" icon="phone-volume">
+    Real-time transcription and AI agent integration
+  </Card>
+</CardGroup>
 
-<Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
->
-  View the OpenAPI specification file
-</Card>
+## Base URL
 
-## Authentication
+All API requests should be made to:
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
-
-```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
 ```
+https://api.agentphone.dev
+```
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/api-reference/quickstart">
+    Get up and running in under 2 minutes
+  </Card>
+  <Card title="Authentication" icon="key" href="/api-reference/authentication">
+    Learn how to authenticate your requests
+  </Card>
+</CardGroup>

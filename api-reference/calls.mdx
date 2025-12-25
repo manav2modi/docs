@@ -1,0 +1,166 @@
+---
+title: 'Voice Calls'
+description: 'Handle voice calls with real-time transcription'
+---
+
+## Voice Calls
+
+Voice calls are automatically transcribed and sent to your webhook in real-time. Your AI agent can respond by returning text that we'll speak to the caller.
+
+<Info>
+  **How Voice Calls Work:** When someone calls your number, we answer, transcribe their speech, and send it to your webhook. You return text, and we speak it back to the caller. This creates a conversational loop perfect for AI agents.
+</Info>
+
+## Call Flow
+
+1. Caller dials your number
+2. We answer and play a short tone
+3. Caller speaks: "I need help with my order"
+4. We transcribe and POST to your webhook with `event: "agent.message"` and `channel: "voice"`
+5. Your server processes the transcript (e.g., sends to OpenAI)
+6. You return `{"text": "Sure! What's your order number?"}`
+7. We speak that text to the caller using text-to-speech
+8. We listen for more speech and repeat the loop
+
+## List All Calls
+
+**GET** `/v1/calls`
+
+List all voice calls for your project with transcripts.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | integer | Max results (default: 20, max: 100) |
+| `offset` | integer | Pagination offset |
+
+<CodeGroup>
+```bash Request
+curl https://api.agentphone.dev/v1/calls \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```json Response
+{
+  "data": [
+    {
+      "id": "call_abc123",
+      "phoneNumberId": "pn_xyz",
+      "phoneNumber": "+18571234567",
+      "fromNumber": "+14155551234",
+      "toNumber": "+18571234567",
+      "status": "completed",
+      "startedAt": "2025-12-03T10:00:00Z",
+      "endedAt": "2025-12-03T10:02:15Z",
+      "durationSeconds": 135,
+      "transcripts": [
+        {
+          "id": "trans_1",
+          "transcript": "Hello, I need help with my order",
+          "confidence": 0.95,
+          "response": "Sure! What's your order number?",
+          "createdAt": "2025-12-03T10:00:05Z"
+        }
+      ]
+    }
+  ],
+  "hasMore": false,
+  "total": 1
+}
+```
+</CodeGroup>
+
+## Get a Call
+
+**GET** `/v1/calls/:id`
+
+Get a specific call with all its transcripts.
+
+## List Calls for a Number
+
+**GET** `/v1/numbers/:id/calls`
+
+List all calls for a specific phone number.
+
+## Initiate an Outbound Call
+
+**POST** `/v1/calls`
+
+Initiate an outbound call from your agent to any phone number.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `agentId` | string | Yes | Agent ID to make the call from |
+| `toNumber` | string | Yes | Destination phone number (E.164 format) |
+| `initialGreeting` | string | No | What to say when recipient answers |
+| `voice` | string | No | Polly voice to use (default: Polly.Amy) |
+
+<CodeGroup>
+```bash Request
+curl -X POST https://api.agentphone.dev/v1/calls \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agentId": "agent_abc123",
+    "toNumber": "+14155551234",
+    "initialGreeting": "Hello! This is a call from your support agent.",
+    "voice": "Polly.Amy"
+  }'
+```
+
+```json Response
+{
+  "id": "call_xyz789",
+  "agentId": "agent_abc123",
+  "phoneNumberId": "pn_xyz",
+  "fromNumber": "+18571234567",
+  "toNumber": "+14155551234",
+  "direction": "outbound",
+  "status": "queued",
+  "twilioCallSid": "CA1234567890abcdef",
+  "startedAt": "2025-12-18T10:00:00Z"
+}
+```
+</CodeGroup>
+
+<Info>
+  **How it works:**
+  1. Call is initiated from the agent's phone number
+  2. When recipient answers, the initial greeting is spoken (if provided)
+  3. System listens for recipient's speech
+  4. Transcript is sent to your webhook for AI response
+  5. Conversation continues like inbound calls
+</Info>
+
+## Webhook Response Format
+
+Your webhook should return JSON with one of these formats:
+
+<CodeGroup>
+```json Continue conversation
+{
+  "text": "How can I help you?",
+  "voice": "Polly.Amy"  // Optional: Polly.Amy, Polly.Matthew, etc.
+}
+```
+
+```json End the call
+{
+  "text": "Thanks for calling! Goodbye.",
+  "hangup": true
+}
+```
+</CodeGroup>
+
+## Available Voices
+
+You can specify different voices using Amazon Polly voice names:
+
+| Voice | Description |
+|-------|-------------|
+| `Polly.Amy` | Default, female, US |
+| `Polly.Matthew` | Male, US |
+| `Polly.Joanna` | Female, US |
+| `Polly.Joey` | Male, US |
+
+See [Amazon Polly voices](https://docs.aws.amazon.com/polly/latest/dg/voicelist.html) for the full list.
+

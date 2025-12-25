@@ -1,0 +1,270 @@
+---
+title: 'Webhooks'
+description: 'Receive real-time notifications for messages and voice calls'
+---
+
+## Webhooks
+
+Receive real-time notifications when messages arrive or when callers speak. Register a webhook URL and we'll POST event data to your server instantly.
+
+## Register a Webhook
+
+**POST** `/v1/webhooks`
+
+Register or update your webhook endpoint.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `url` | string | Yes | Your webhook endpoint URL (must be HTTPS) |
+| `contextLimit` | integer | No | Number of recent messages in recentHistory (0-50, default: 10) |
+
+<CodeGroup>
+```bash Request
+curl -X POST https://api.agentphone.dev/v1/webhooks \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://your-server.com/webhooks/agent",
+    "contextLimit": 10
+  }'
+```
+
+```json Response
+{
+  "id": "wh_abc123",
+  "url": "https://your-server.com/webhooks/agent",
+  "secret": "whsec_xyz...",
+  "status": "active",
+  "contextLimit": 10,
+  "createdAt": "2025-12-03T10:00:00Z"
+}
+```
+</CodeGroup>
+
+## Unified Webhook Event: agent.message
+
+All inbound messages (SMS and voice) are delivered as a single `agent.message` event. The `channel` field indicates whether it's SMS or voice.
+
+<Info>
+  **🧠 Stateful Conversations:** Every webhook includes `recentHistory` (configurable 0-50 messages, default 10) and `conversationState` (your custom metadata) — giving your AI agent full context without extra API calls.
+</Info>
+
+### SMS Channel
+
+When someone texts your number:
+
+<CodeGroup>
+```json SMS webhook payload
+{
+  "event": "agent.message",
+  "channel": "sms",
+  "timestamp": "2025-12-03T10:05:00Z",
+  "agentId": "agent_123",
+  "data": {
+    "conversationId": "conv_abc123",
+    "numberId": "num_abc",
+    "from": "+14155551234",
+    "to": "+18571234567",
+    "message": "Where's my order?",
+    "direction": "inbound",
+    "receivedAt": "2025-12-03T10:05:00Z"
+  },
+  "conversationState": {
+    "customerName": "John Smith",
+    "orderId": "ORD-12345"
+  },
+  "recentHistory": [
+    { "content": "Hi, I placed an order", "direction": "inbound", "channel": "sms", "at": "2025-12-03T09:45:00Z" },
+    { "content": "I'd be happy to help! What's your order number?", "direction": "outbound", "channel": "sms", "at": "2025-12-03T09:46:00Z" },
+    { "content": "It's ORD-12345", "direction": "inbound", "channel": "sms", "at": "2025-12-03T09:47:00Z" },
+    { "content": "Thanks! I see it shipped this morning.", "direction": "outbound", "channel": "sms", "at": "2025-12-03T09:48:00Z" },
+    { "content": "Where's my order?", "direction": "inbound", "channel": "sms", "at": "2025-12-03T10:05:00Z" }
+  ]
+}
+```
+</CodeGroup>
+
+<Note>
+  **SMS Response:** Just return `200 OK`. Outbound SMS is not yet supported in V1.
+</Note>
+
+### Voice Channel
+
+When someone speaks on a call:
+
+<CodeGroup>
+```json Voice webhook payload
+{
+  "event": "agent.message",
+  "channel": "voice",
+  "timestamp": "2025-12-03T10:05:02Z",
+  "agentId": "agent_123",
+  "data": {
+    "callId": "call_abc123",
+    "numberId": "num_abc",
+    "from": "+14155551234",
+    "to": "+18571234567",
+    "status": "in-progress",
+    "transcript": "Where's my order?",
+    "confidence": 0.95,
+    "direction": "inbound"
+  },
+  "conversationState": null,
+  "recentHistory": [
+    { "content": "Hi, I need help with my order", "direction": "inbound", "channel": "voice", "at": "2025-12-03T10:04:30Z" },
+    { "content": "Of course! What's your order number?", "direction": "outbound", "channel": "voice", "at": "2025-12-03T10:04:35Z" },
+    { "content": "It's O-R-D-1-2-3-4-5", "direction": "inbound", "channel": "voice", "at": "2025-12-03T10:04:50Z" },
+    { "content": "Where's my order?", "direction": "inbound", "channel": "voice", "at": "2025-12-03T10:05:02Z" }
+  ]
+}
+```
+</CodeGroup>
+
+<Note>
+  **Voice Response Required:** Return JSON to speak to the caller:
+</Note>
+
+<CodeGroup>
+```json Voice Response
+{
+  "text": "Sure, what's your order number?",
+  "voice": "Polly.Amy",  // optional
+  "hangup": false        // true to end the call
+}
+```
+</CodeGroup>
+
+### Handling Both Channels with Context
+
+<CodeGroup>
+```python Example handler (Python)
+@app.post('/webhook')
+def handle_message(payload):
+    channel = payload['channel']
+    data = payload['data']
+    state = payload.get('conversationState') or {}
+    history = payload.get('recentHistory', [])
+    
+    # Build context for AI from recent history
+    context = "\n".join([
+        f"{'Customer' if h['direction'] == 'inbound' else 'Agent'}: {h['content']}"
+        for h in history
+    ])
+    
+    # Call your LLM with full context
+    response = openai.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": f"Customer: {state.get('customerName', 'Unknown')}"},
+            {"role": "user", "content": f"Conversation:\n{context}\n\nRespond to the latest message."}
+        ]
+    )
+    
+    if channel == 'voice':
+        return {"text": response.choices[0].message.content}
+    return Response(status_code=200)
+```
+</CodeGroup>
+
+## Webhook Headers
+
+| Header | Description |
+|-------|-------------|
+| `X-Webhook-Signature` | HMAC-SHA256 signature for verification |
+| `X-Webhook-ID` | Unique delivery ID for idempotency |
+
+## Verifying Signatures
+
+Always verify the `X-Webhook-Signature` header to ensure requests are from us:
+
+<CodeGroup>
+```python Python
+import hmac
+import hashlib
+import json
+
+def verify_webhook(payload_body: bytes, signature: str, secret: str) -> bool:
+    expected = hmac.new(
+        secret.encode(),
+        payload_body,
+        hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(f"sha256={expected}", signature)
+```
+
+```javascript Node.js
+const crypto = require('crypto');
+
+function verifyWebhook(payloadBody, signature, secret) {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(payloadBody)
+    .digest('hex');
+  return signature === `sha256=${expected}`;
+}
+```
+</CodeGroup>
+
+## Webhook Retry Behavior
+
+If your webhook endpoint fails or doesn't respond, we automatically retry delivery with exponential backoff:
+
+| Attempt | Delay | Description |
+|--------|-------|-------------|
+| 1 | Immediate | Initial delivery attempt |
+| 2 | 5 minutes | First retry |
+| 3 | 30 minutes | Second retry |
+| 4 | 2 hours | Third retry |
+| 5 | 6 hours | Fourth retry |
+| 6 | 12 hours | Final retry |
+
+<Warning>
+  After 5 retries (6 total attempts), the webhook is marked as failed. You can view failed deliveries in the dashboard and manually retry if needed. Always return 200 OK quickly to avoid retries.
+</Warning>
+
+### Handling Duplicate Deliveries
+
+Due to retries, you may receive the same webhook multiple times. Use the `X-Webhook-ID` header for idempotency:
+
+<CodeGroup>
+```python Python - Idempotent webhook handler
+import hmac
+import hashlib
+from flask import Flask, request
+
+app = Flask(__name__)
+processed_webhooks = set()  # In production, use Redis or database
+
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    webhook_id = request.headers.get('X-Webhook-ID')
+    
+    # Check if already processed
+    if webhook_id in processed_webhooks:
+        return 'OK', 200  # Already processed
+    
+    # Verify signature
+    signature = request.headers.get('X-Webhook-Signature')
+    if not verify_signature(request.data, signature, WEBHOOK_SECRET):
+        return 'Invalid signature', 401
+    
+    # Process webhook
+    data = request.json
+    # ... your processing logic ...
+    
+    # Mark as processed
+    processed_webhooks.add(webhook_id)
+    
+    return 'OK', 200
+```
+</CodeGroup>
+
+## Other Webhook Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/v1/webhooks` | Get current webhook config |
+| `DELETE` | `/v1/webhooks` | Remove webhook |
+| `GET` | `/v1/webhooks/deliveries` | View delivery history |
+| `POST` | `/v1/webhooks/test` | Send a test webhook |
+

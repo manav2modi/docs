@@ -1,0 +1,58 @@
+---
+title: 'Limits & Quotas'
+description: 'Understand rate limits and phone number quotas'
+---
+
+## Phone Number Limits
+
+Each project has a **lifetime limit** on the number of phone numbers that can be created. This limit includes both active and released numbers.
+
+<Card title="Current Limit" icon="phone">
+  **5 numbers per project** - Lifetime limit (includes released numbers)
+</Card>
+
+<Warning>
+  If you reach your limit, you'll receive a validation error when attempting to create a new number. To create more numbers, please upgrade your plan or contact support.
+</Warning>
+
+## Rate Limiting
+
+API requests are rate limited to ensure fair usage and system stability. Rate limits vary by endpoint based on the operation's cost and complexity.
+
+### Rate Limits by Endpoint
+
+| Endpoint | Limit |
+|----------|-------|
+| `POST /v1/numbers` | 5 per hour |
+| `DELETE /v1/numbers/:id` | 10 per hour |
+| `POST /v1/webhooks` | 100 per hour |
+| `POST /v1/webhooks/test` | 60 per hour |
+| `GET /v1/numbers` | 1000 per minute |
+| `GET /v1/numbers/:id/messages` | 100 per minute |
+| `GET /v1/conversations` | 100 per minute |
+| All other endpoints | 100 per minute (default) |
+
+### Rate Limit Headers
+
+When you exceed a rate limit, you'll receive a `429 Too Many Requests` response with the following headers:
+
+- `Retry-After`: Seconds to wait before retrying
+- `X-RateLimit-Limit`: Maximum requests allowed
+- `X-RateLimit-Remaining`: Requests remaining in window
+
+<CodeGroup>
+```json Rate Limit Exceeded Response
+{
+  "error": {
+    "message": "Rate limit exceeded. Limit: 5 requests per 3600s",
+    "code": "RATE_LIMIT_EXCEEDED",
+    "type": "rate_limit_error"
+  }
+}
+```
+</CodeGroup>
+
+<Note>
+  Always implement exponential backoff when retrying after rate limit errors. See the [Error Handling](/api-reference/error-handling) guide for best practices.
+</Note>
+

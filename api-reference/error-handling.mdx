@@ -1,0 +1,162 @@
+---
+title: 'Error Handling'
+description: 'Understand API error responses and how to handle them'
+---
+
+## Error Handling
+
+The API uses standard HTTP status codes and returns detailed error information in a consistent format. Always handle errors gracefully in your application.
+
+## Error Response Format
+
+All errors follow this structure:
+
+<CodeGroup>
+```json Error Response
+{
+  "error": {
+    "message": "Human-readable error message",
+    "code": "ERROR_CODE",
+    "type": "error_type",
+    "details": [...]  // Optional: validation errors, etc.
+  }
+}
+```
+</CodeGroup>
+
+## HTTP Status Codes
+
+| Code | Meaning | When It Occurs |
+|------|---------|----------------|
+| `200` | OK | Successful GET request |
+| `201` | Created | Successful POST request (resource created) |
+| `400` | Bad Request | Invalid request parameters or validation error |
+| `401` | Unauthorized | Missing or invalid API key |
+| `404` | Not Found | Resource doesn't exist or you don't have access |
+| `422` | Unprocessable Entity | Validation error (invalid data format) |
+| `429` | Too Many Requests | Rate limit exceeded (check Retry-After header) |
+| `500` | Internal Server Error | Server error (retry with exponential backoff) |
+| `502` | Bad Gateway | Twilio service error (retry later) |
+
+## Error Codes
+
+### VALIDATION_ERROR
+
+Request validation failed. Check the `details` field for specific field errors.
+
+<CodeGroup>
+```json Example
+{
+  "error": {
+    "message": "Validation error",
+    "code": "VALIDATION_ERROR",
+    "type": "validation_error",
+    "details": [
+      {
+        "field": "country",
+        "message": "Country must be a 2-letter ISO code",
+        "type": "value_error"
+      }
+    ]
+  }
+}
+```
+</CodeGroup>
+
+### VALIDATION_ERROR_NUMBER_LIMIT
+
+Number limit reached. You've created the maximum allowed phone numbers for your project.
+
+### RATE_LIMIT_EXCEEDED
+
+Rate limit exceeded. Check the `Retry-After` header for when to retry.
+
+<CodeGroup>
+```json Example
+{
+  "error": {
+    "message": "Rate limit exceeded. Limit: 5 requests per 3600s",
+    "code": "RATE_LIMIT_EXCEEDED",
+    "type": "rate_limit_error"
+  }
+}
+```
+</CodeGroup>
+
+### PHONE_NUMBER_NOT_FOUND
+
+The requested phone number doesn't exist or you don't have access to it.
+
+### TWILIO_ERROR
+
+Error from Twilio service. Usually indicates a temporary issue - retry with exponential backoff.
+
+## Error Handling Best Practices
+
+### 1. Always Check Response Status
+
+<CodeGroup>
+```javascript JavaScript
+const response = await fetch(url, options);
+if (!response.ok) {
+  const error = await response.json();
+  // Handle error
+  console.error('API Error:', error.error.message);
+  throw new Error(error.error.message);
+}
+const data = await response.json();
+```
+</CodeGroup>
+
+### 2. Handle Rate Limits
+
+<CodeGroup>
+```javascript JavaScript
+async function makeRequestWithRetry(url, options, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    const response = await fetch(url, options);
+    
+    if (response.status === 429) {
+      const retryAfter = parseInt(response.headers.get('Retry-After') || '60');
+      console.log(`Rate limited. Retrying after ${retryAfter}s...`);
+      await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+      continue;
+    }
+    
+    if (!response.ok) {
+      throw new Error(`Request failed: ${response.status}`);
+    }
+    
+    return response.json();
+  }
+  throw new Error('Max retries exceeded');
+}
+```
+</CodeGroup>
+
+### 3. Retry Transient Errors
+
+<CodeGroup>
+```python Python
+import time
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+def create_session_with_retry():
+    session = requests.Session()
+    retry_strategy = Retry(
+        total=3,
+        backoff_factor=1,
+        status_forcelist=[429, 500, 502, 503, 504]
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    return session
+
+session = create_session_with_retry()
+response = session.post(url, headers=headers, json=data)
+```
+</CodeGroup>
+

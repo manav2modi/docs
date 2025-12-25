@@ -1,0 +1,128 @@
+---
+title: 'Phone Numbers'
+description: 'Provision and manage phone numbers'
+---
+
+## Phone Numbers
+
+Phone numbers are the gateway for receiving SMS messages and voice calls. Each number can be assigned to an agent and will receive all inbound communications.
+
+## Create a Phone Number
+
+**POST** `/v1/numbers`
+
+Provision a new SMS-enabled phone number. Optionally assign it to an agent.
+
+<Warning>
+  Each project has a lifetime limit of 5 phone numbers (including released numbers). If you've reached this limit, you'll receive a validation error.
+</Warning>
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `country` | string | Yes | Country code (e.g., "US") |
+| `agentId` | string | No | Optional - Agent ID to assign the number to |
+
+<CodeGroup>
+```bash Request
+curl -X POST https://api.agentphone.dev/v1/numbers \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "country": "US",
+    "agentId": "agent_123"
+  }'
+```
+
+```json Response
+{
+  "id": "clx123abc",
+  "phoneNumber": "+18571234567",
+  "country": "US",
+  "status": "active",
+  "agentId": "agent_123",
+  "createdAt": "2025-12-03T10:00:00Z"
+}
+```
+</CodeGroup>
+
+### Error Responses
+
+<CodeGroup>
+```json Number limit reached
+{
+  "error": {
+    "message": "Number limit reached. You have created 5 of 5 allowed phone numbers. This is a lifetime limit. To create more numbers, please upgrade your plan.",
+    "code": "VALIDATION_ERROR_NUMBER_LIMIT",
+    "type": "validation_error"
+  }
+}
+```
+
+```json Rate limit exceeded
+{
+  "error": {
+    "message": "Rate limit exceeded. Limit: 5 requests per 3600s",
+    "code": "RATE_LIMIT_EXCEEDED",
+    "type": "rate_limit_error"
+  }
+}
+```
+</CodeGroup>
+
+## List Phone Numbers
+
+**GET** `/v1/numbers`
+
+List all phone numbers for your project.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | integer | Max results (default: 20, max: 100) |
+| `offset` | integer | Pagination offset |
+
+## Get Messages for a Number
+
+**GET** `/v1/numbers/:id/messages`
+
+Get messages received on a specific phone number.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | integer | Max results (default: 50, max: 200) |
+| `before` | string | ISO timestamp for pagination |
+| `after` | string | ISO timestamp for pagination |
+
+## Delete a Phone Number
+
+**DELETE** `/v1/numbers/:id`
+
+Release (delete) a phone number. This will release the number from Twilio and mark it as "released" in the database.
+
+<Warning>
+  **This action is irreversible!** The number cannot be recovered.
+</Warning>
+
+<CodeGroup>
+```bash Request
+curl -X DELETE https://api.agentphone.dev/v1/numbers/clx123abc \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```json Response
+{
+  "success": true,
+  "message": "Phone number released successfully",
+  "id": "clx123abc",
+  "phoneNumber": "+18571234567",
+  "status": "released"
+}
+```
+</CodeGroup>
+
+<Note>
+  - Message history is preserved (not deleted)
+  - Conversation history is preserved
+  - The number goes back to Twilio's pool
+  - Cannot release a number that's already released
+</Note>
+

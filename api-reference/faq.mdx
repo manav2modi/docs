@@ -1,0 +1,71 @@
+---
+title: 'FAQ'
+description: 'Frequently asked questions about the Agent Phone API'
+---
+
+## FAQ
+
+## General
+
+<AccordionGroup>
+  <Accordion title="How do I get started?">
+    Create a project to get your API key, then use it to provision a phone number. See the [Quick Start](/api-reference/quickstart) guide.
+  </Accordion>
+
+  <Accordion title="What countries are supported?">
+    Currently, only US phone numbers are supported. International numbers coming soon.
+  </Accordion>
+
+  <Accordion title="How many phone numbers can I create?">
+    Each project has a lifetime limit of 5 phone numbers (including released numbers). This limit may increase with plan upgrades.
+  </Accordion>
+</AccordionGroup>
+
+## Webhooks
+
+<AccordionGroup>
+  <Accordion title="How do I test webhooks locally?">
+    Use ngrok or localtunnel to expose your local server. See the [Testing](/api-reference/testing) guide for details.
+  </Accordion>
+
+  <Accordion title="What happens if my webhook endpoint is down?">
+    Webhooks are automatically retried with exponential backoff (5min, 30min, 2h, 6h, 12h). Failed deliveries are logged and can be viewed in the dashboard.
+  </Accordion>
+
+  <Accordion title="Can I receive duplicate webhooks?">
+    Yes, due to retries. Always use the `X-Webhook-ID` header for idempotency. Store processed webhook IDs to prevent duplicate processing.
+  </Accordion>
+
+  <Accordion title="How do I verify webhook signatures?">
+    Use HMAC-SHA256 with your webhook secret. See the [Webhooks](/api-reference/webhooks) section for code examples.
+  </Accordion>
+</AccordionGroup>
+
+## Rate Limits & Errors
+
+<AccordionGroup>
+  <Accordion title="What happens if I exceed rate limits?">
+    You'll receive a 429 Too Many Requests response with a `Retry-After` header. Implement exponential backoff when retrying.
+  </Accordion>
+
+  <Accordion title="How should I handle errors?">
+    Check the error response format and handle different error codes appropriately. Retry transient errors (429, 500, 502) with exponential backoff. See the [Error Handling](/api-reference/error-handling) guide.
+  </Accordion>
+</AccordionGroup>
+
+## Phone Numbers
+
+<AccordionGroup>
+  <Accordion title="Can I choose a specific phone number?">
+    Not currently. Numbers are automatically selected from available inventory. Custom number selection may be available in the future.
+  </Accordion>
+
+  <Accordion title="What happens when I delete a number?">
+    The number is released back to Twilio and cannot be recovered. All message and conversation history is preserved for audit purposes.
+  </Accordion>
+
+  <Accordion title="Can I use the same number for multiple projects?">
+    No, each phone number belongs to a single project. Create separate numbers for different projects.
+  </Accordion>
+</AccordionGroup>
+

@@ -1,0 +1,77 @@
+---
+title: 'Best Practices'
+description: 'Follow these best practices to build reliable integrations'
+---
+
+## Best Practices
+
+Follow these best practices to build reliable integrations with the Agent Phone API.
+
+## Security
+
+<Checklist>
+  <ChecklistItem checked>
+    **Never expose API keys** in client-side code or public repositories. Use environment variables.
+  </ChecklistItem>
+  <ChecklistItem checked>
+    **Always verify webhook signatures** to ensure requests are from Agent Phone.
+  </ChecklistItem>
+  <ChecklistItem checked>
+    **Use HTTPS** for webhook endpoints in production.
+  </ChecklistItem>
+  <ChecklistItem checked>
+    **Rotate API keys** periodically and revoke unused keys.
+  </ChecklistItem>
+</Checklist>
+
+## Webhook Reliability
+
+<Checklist>
+  <ChecklistItem checked>
+    **Return 200 OK quickly** - process webhooks asynchronously if needed.
+  </ChecklistItem>
+  <ChecklistItem checked>
+    **Handle duplicate deliveries** - use `X-Webhook-ID` for idempotency.
+  </ChecklistItem>
+  <ChecklistItem checked>
+    **Implement retry logic** - webhooks are automatically retried, but handle failures gracefully.
+  </ChecklistItem>
+  <ChecklistItem checked>
+    **Log all webhook deliveries** for debugging and audit purposes.
+  </ChecklistItem>
+</Checklist>
+
+## Performance
+
+<Checklist>
+  <ChecklistItem checked>
+    **Use webhooks instead of polling** for real-time updates.
+  </ChecklistItem>
+  <ChecklistItem checked>
+    **Use cursor-based pagination** (before/after) for time-ordered data.
+  </ChecklistItem>
+  <ChecklistItem checked>
+    **Cache frequently accessed data** like phone number lists.
+  </ChecklistItem>
+  <ChecklistItem checked>
+    **Respect rate limits** - implement exponential backoff for retries.
+  </ChecklistItem>
+</Checklist>
+
+## Error Handling
+
+<Checklist>
+  <ChecklistItem checked>
+    **Always check response status** before processing data.
+  </ChecklistItem>
+  <ChecklistItem checked>
+    **Implement retry logic** for transient errors (429, 500, 502).
+  </ChecklistItem>
+  <ChecklistItem checked>
+    **Log errors** with context for debugging.
+  </ChecklistItem>
+  <ChecklistItem checked>
+    **Handle validation errors** gracefully and show user-friendly messages.
+  </ChecklistItem>
+</Checklist>
+

@@ -1,0 +1,47 @@
+---
+title: 'Authentication'
+description: 'Learn how to authenticate API requests'
+---
+
+## Authentication
+
+All API requests require authentication using an API key. Include your key in the `Authorization` header:
+
+```bash
+Authorization: Bearer YOUR_API_KEY
+```
+
+<CodeGroup>
+```bash Example request
+curl -X GET https://api.agentphone.dev/v1/numbers \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+</CodeGroup>
+
+<Warning>
+  **Keep your API key secret** - Never expose your API key in client-side code or public repositories. Use environment variables to store your keys securely.
+</Warning>
+
+## Getting Your API Key
+
+You can get your API key by creating a project in the dashboard. The API key is shown once during project creation, so make sure to save it securely.
+
+## Using Environment Variables
+
+Store your API key in an environment variable:
+
+<CodeGroup>
+```bash .env
+AGENT_PHONE_API_KEY=your_api_key_here
+```
+
+```javascript JavaScript
+const API_KEY = process.env.AGENT_PHONE_API_KEY;
+```
+
+```python Python
+import os
+API_KEY = os.environ.get('AGENT_PHONE_API_KEY')
+```
+</CodeGroup>
+

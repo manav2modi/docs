@@ -1,0 +1,139 @@
+---
+title: 'Agents'
+description: 'Manage AI agents that handle phone interactions'
+---
+
+## Agents
+
+Agents are the core entity in Agent Phone. Each agent represents an AI persona (Support Bot, Sales Agent, etc.) that can have phone numbers attached to it. All inbound messages and calls are associated with an agent.
+
+## Create an Agent
+
+**POST** `/v1/agents`
+
+Create a new agent.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | string | Yes | The name of the agent |
+| `description` | string | No | A description of what the agent does |
+
+<CodeGroup>
+```bash Request
+curl -X POST https://api.agentphone.dev/v1/agents \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Support Bot",
+    "description": "Handles customer support via SMS and voice"
+  }'
+```
+
+```json Response
+{
+  "id": "agent_123",
+  "name": "Support Bot",
+  "description": "Handles customer support via SMS and voice",
+  "createdAt": "2025-12-03T10:00:00Z",
+  "numbers": []
+}
+```
+</CodeGroup>
+
+## List Agents
+
+**GET** `/v1/agents`
+
+List all agents for your project.
+
+<CodeGroup>
+```bash Request
+curl https://api.agentphone.dev/v1/agents \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```json Response
+{
+  "data": [
+    {
+      "id": "agent_123",
+      "name": "Support Bot",
+      "description": "Handles customer support",
+      "createdAt": "2025-12-03T10:00:00Z",
+      "numbers": [
+        { "id": "num_abc", "phoneNumber": "+18571234567", "status": "active" }
+      ]
+    }
+  ],
+  "total": 1
+}
+```
+</CodeGroup>
+
+## Get an Agent
+
+**GET** `/v1/agents/:id`
+
+Get a single agent with its attached numbers.
+
+<CodeGroup>
+```bash Request
+curl https://api.agentphone.dev/v1/agents/agent_123 \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```json Response
+{
+  "id": "agent_123",
+  "name": "Support Bot",
+  "description": "Handles customer support",
+  "numbers": [
+    { "id": "num_abc", "phoneNumber": "+18571234567", "status": "active" }
+  ],
+  "createdAt": "2025-12-03T10:00:00Z"
+}
+```
+</CodeGroup>
+
+## Attach a Number to an Agent
+
+**POST** `/v1/agents/:id/numbers`
+
+Attach an existing phone number to an agent.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `numberId` | string | Yes | The ID of the phone number to attach |
+
+<CodeGroup>
+```bash Request
+curl -X POST https://api.agentphone.dev/v1/agents/agent_123/numbers \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"numberId": "num_abc"}'
+```
+
+```json Response
+{
+  "agentId": "agent_123",
+  "number": {
+    "id": "num_abc",
+    "phoneNumber": "+18571234567",
+    "status": "active"
+  }
+}
+```
+</CodeGroup>
+
+## List Agent Conversations
+
+**GET** `/v1/agents/:id/conversations`
+
+List all SMS conversations for an agent.
+
+## List Agent Calls
+
+**GET** `/v1/agents/:id/calls`
+
+List all voice calls for an agent.
+

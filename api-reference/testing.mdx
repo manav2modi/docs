@@ -1,0 +1,158 @@
+---
+title: 'Testing'
+description: 'Learn how to test your integration and webhooks'
+---
+
+## Testing
+
+Learn how to test your integration, including webhook testing and local development.
+
+## Testing Webhooks Locally
+
+To test webhooks during development, you need to expose your local server to the internet. Use tools like ngrok or localtunnel.
+
+### Using ngrok
+
+<CodeGroup>
+```bash Terminal
+# Install ngrok: https://ngrok.com/download
+
+# Start your local server
+python app.py  # or node server.js
+
+# In another terminal, expose port 3000
+ngrok http 3000
+
+# Copy the HTTPS URL (e.g., https://abc123.ngrok.io)
+# Use this as your webhook URL
+```
+</CodeGroup>
+
+### Using localtunnel
+
+<CodeGroup>
+```bash Terminal
+# Install: npm install -g localtunnel
+
+# Expose your local server
+lt --port 3000
+
+# Use the provided URL as your webhook URL
+```
+</CodeGroup>
+
+## Testing Webhook Endpoints
+
+Use the test webhook endpoint to verify your webhook handler works correctly:
+
+<CodeGroup>
+```bash Test your webhook
+curl -X POST https://api.agentphone.dev/v1/webhooks/test \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```json Response
+{
+  "success": true,
+  "httpStatus": 200,
+  "errorMessage": null
+}
+```
+</CodeGroup>
+
+## Mock Webhook Payloads
+
+Test your webhook handler with sample payloads (includes stateful context):
+
+### SMS Channel
+
+<CodeGroup>
+```json Sample SMS webhook payload
+{
+  "event": "agent.message",
+  "channel": "sms",
+  "timestamp": "2025-12-03T10:05:00Z",
+  "agentId": "agent_123",
+  "data": {
+    "conversationId": "conv_test456",
+    "numberId": "num_abc",
+    "from": "+14155551234",
+    "to": "+18571234567",
+    "message": "Test message",
+    "direction": "inbound",
+    "receivedAt": "2025-12-03T10:05:00Z"
+  },
+  "conversationState": { "testMode": true },
+  "recentHistory": [
+    { "content": "Hello", "direction": "inbound", "channel": "sms", "at": "2025-12-03T10:04:00Z" }
+  ]
+}
+```
+</CodeGroup>
+
+### Voice Channel
+
+<CodeGroup>
+```json Sample voice webhook payload
+{
+  "event": "agent.message",
+  "channel": "voice",
+  "timestamp": "2025-12-03T10:05:00Z",
+  "agentId": "agent_123",
+  "data": {
+    "callId": "call_abc123",
+    "numberId": "num_abc",
+    "from": "+14155551234",
+    "to": "+18571234567",
+    "status": "in-progress",
+    "transcript": "I need help with my order",
+    "confidence": 0.95,
+    "direction": "inbound"
+  },
+  "conversationState": null,
+  "recentHistory": [
+    { "content": "Hello, how can I help?", "direction": "outbound", "channel": "voice", "at": "2025-12-03T10:04:30Z" }
+  ]
+}
+```
+</CodeGroup>
+
+<Note>
+  For voice events, your webhook should return `{"text": "...", "voice": "Polly.Amy", "hangup": false}` to speak to the caller.
+</Note>
+
+### Express.js Test Handler
+
+<CodeGroup>
+```javascript Express.js test handler
+const express = require('express');
+const app = express();
+
+app.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+  const signature = req.headers['x-webhook-signature'];
+  const payload = req.body;
+  
+  // Verify signature (use your webhook secret)
+  // Process the message
+  
+  console.log('Received:', JSON.parse(payload.toString()));
+  res.status(200).send('OK');
+});
+
+app.listen(3000);
+```
+</CodeGroup>
+
+## Checking Webhook Deliveries
+
+Monitor webhook delivery status in the dashboard or via API:
+
+<CodeGroup>
+```bash Get delivery history
+curl https://api.agentphone.dev/v1/webhooks/deliveries \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Response shows delivery attempts, status, and errors
+```
+</CodeGroup>
+

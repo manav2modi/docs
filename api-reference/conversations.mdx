@@ -1,0 +1,126 @@
+---
+title: 'Conversations'
+description: 'Manage SMS conversations between your numbers and participants'
+---
+
+## Conversations
+
+Conversations group messages between your phone number and a participant. Each unique pair of (your number, their number) creates one conversation, making it easy to track threaded communications.
+
+## List Conversations
+
+**GET** `/v1/conversations`
+
+List all conversations, sorted by most recent activity.
+
+<CodeGroup>
+```bash Request
+curl https://api.agentphone.dev/v1/conversations \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```json Response
+{
+  "data": [
+    {
+      "id": "conv_abc123",
+      "phoneNumberId": "pn_xyz",
+      "phoneNumber": "+18571234567",
+      "participant": "+14155551234",
+      "lastMessageAt": "2025-12-03T10:05:00Z",
+      "lastMessagePreview": "Hey, what time works?",
+      "messageCount": 12,
+      "createdAt": "2025-12-01T08:00:00Z"
+    }
+  ],
+  "hasMore": false,
+  "total": 1
+}
+```
+</CodeGroup>
+
+## Get a Conversation
+
+**GET** `/v1/conversations/:id`
+
+Get a conversation with its recent messages.
+
+<CodeGroup>
+```bash Request
+curl https://api.agentphone.dev/v1/conversations/conv_abc123 \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```json Response
+{
+  "id": "conv_abc123",
+  "phoneNumber": "+18571234567",
+  "participant": "+14155551234",
+  "messageCount": 12,
+  "messages": [
+    {
+      "id": "msg_1",
+      "body": "Hello!",
+      "fromNumber": "+14155551234",
+      "toNumber": "+18571234567",
+      "receivedAt": "2025-12-03T10:00:00Z"
+    },
+    {
+      "id": "msg_2",
+      "body": "Hey, what time works?",
+      "fromNumber": "+14155551234",
+      "toNumber": "+18571234567",
+      "receivedAt": "2025-12-03T10:05:00Z"
+    }
+  ]
+}
+```
+</CodeGroup>
+
+## Get Conversation Messages
+
+**GET** `/v1/conversations/:id/messages`
+
+Get paginated messages for a conversation. Use this for loading older messages.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | integer | Max results (default: 50, max: 200) |
+| `before` | string | Get messages before this timestamp |
+| `after` | string | Get messages after this timestamp |
+
+## Update Conversation State
+
+**PATCH** `/v1/conversations/:id`
+
+Store custom metadata on conversations to persist context across messages. This state is included in every webhook as `conversationState`.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `metadata` | object | Yes | Any JSON object to store as conversation metadata |
+
+<CodeGroup>
+```bash Request
+curl -X PATCH https://api.agentphone.dev/v1/conversations/conv_abc123 \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "metadata": {
+      "customerName": "John Smith",
+      "customerId": "cust_abc123",
+      "orderId": "ORD-12345",
+      "topic": "shipping",
+      "sentiment": "frustrated"
+    }
+  }'
+```
+</CodeGroup>
+
+<Info>
+  **Use Cases for State:**
+  - **Customer context:** name, account ID, tier
+  - **Business context:** order ID, ticket number, booking reference
+  - **Session state:** current topic, preferences, language
+  - **AI context:** extracted entities, sentiment, intent
+</Info>
+
